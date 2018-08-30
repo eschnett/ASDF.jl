@@ -1,7 +1,8 @@
 `ASDF <https://github.com/eschnett/ASDF>`_
 ==========================================
 
-A Julia library for the Advanced Scientific Data Format (ASDF).
+A Julia library for the `Advanced Scientific Data Format (ASDF)
+<https://asdf-standard.readthedocs.io/en/latest/index.html>`_.
 
 |Build Status (Travis)|
 |Build Status (Appveyor)|
