@@ -181,9 +181,71 @@ end
 # tag: "tag:stsci.edu:asdf/core/ndarray-1.0.0"
 # title: An *n*-dimensional array.
 
-struct NDArray
+struct NDArray{T, D} <: DenseArray{T, D}
     pyobj::PyObject
 end
 tagged_types["tag:stsci.edu:asdf/core/ndarray-1.0.0"] = NDArray
+
+function NDArray(pyobj::PyObject)
+    D = length(pyobj[:shape])
+    T = Int
+    NDArray{T, D}(pyobj)
+end
+
+function Base.getindex(arr::NDArray{T, D}, i::NTuple{D, Int}) where {T, D}
+    @boundscheck checkindex(Bool, axes(arr), i)
+    arr.pyobj[i...]::T
+end
+function Base.getindex(arr::NDArray{T, D}, i::NTuple{D, I}) where {
+        T, D, I<:Integer}
+    arr.pyobj[NTuple{D, Int}(i)]
+end
+function Base.getindex(arr::NDArray{T, D}, i::CartesianIndex{D}) where {T, D}
+    arr[Tuple(i)]
+end
+function Base.getindex(arr::NDArray, i::Integer...)
+    arr[i]
+end
+
+Base.IteratorSize(::Type{<:NDArray{T, D}}) where {T, D} = HasShape{D}()
+Base.eltype(::Type{NDArray{T, D}}) where {T, D} = T
+function Base.ndims(arr::NDArray{T, D}) where {T, D}
+    D::Int
+end
+function Base.size(arr::NDArray{T, D}) where {T, D}
+    arr.pyobj[:shape]::NTuple{D, Int}
+end
+function Base.size(arr::NDArray, d::Int)
+    size(arr)[d]
+end
+function Base.axes(arr::NDArray{T, D}) where {T, D}
+    Base.OneTo.(size(arr))::NTuple{D, OneTo{Int}}
+end
+function Base.axes(arr::NDArray, d::Int)
+    axes(arr)[d]
+end
+function Base.eachindex(arr::NDArray)
+    
+end
+@generated function size2stride(size::NTuple{D, Int}) where {D}
+    quote
+        str = 1
+        $(((quote
+                $(Symbol("str", d)) = str
+                str *= sidz[d]
+            end) for d in D:-1:1)...)
+        tuple($((Symbol("str", d) for d in 1:D)...))::NTuple{D, Int}
+    end
+end
+function Base.strides(arr::NDArray)
+    size2stride(size(arr))
+end
+function Base.stride(arr::NDArray, d::Int)
+    strides(arr)[d]
+end
+
+
+
+################################################################################
 
 end
