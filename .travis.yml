@@ -8,6 +8,9 @@ julia:
   - "nightly"
 env:
   - PYTHON=
+matrix:
+  allow_failures:
+    - julia: nightly
 notifications:
   email: false
 #script: # the default script is equivalent to the following
