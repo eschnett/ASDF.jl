@@ -1,15 +1,16 @@
 language: julia
 os:
-    - linux
-    - osx
+  - linux
+  - osx
 julia:
-    - "1.0"
-    - "nightly"
+  - "0.7"
+  - "1.0"
+  - "nightly"
 notifications:
-    email: false
-script:
-    - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-    - julia -e 'Pkg.clone(pwd()); Pkg.add("JLDArchives"); Pkg.checkout("JLDArchives")'
-    - julia -e 'Pkg.test("JLD",coverage=true); Pkg.test("JLDArchives",coverage=true)'
+  email: false
+#script: # the default script is equivalent to the following
+#  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+#  - julia -e 'Pkg.clone(pwd()); Pkg.build("ASDF"); Pkg.test("ASDF"; coverage=true)';
 after_success:
-    - if [ $TRAVIS_JULIA_VERSION = "nightly" ]; then julia -e 'cd(Pkg.dir("JLD")); Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'; fi
+  - julia -e 'cd(Pkg.dir("ASDF")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())';
+#  - julia -e 'cd(Pkg.dir("ASDF")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())';

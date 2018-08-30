@@ -1,11 +1,15 @@
-`ASDF <https://github.com/eschnett/ASDF>`_
-==========================================
+ASDF <https://github.com/eschnett/ASDF>
+=======================================
 
-|Build Status| |Coverage Status|
+A Julia library for the Advanced Scientific Data Format (ASDF).
 
-A Julia implementation of the Advanced Scientific Data Format (ASDF).
+|Build Status (Travis)|
+|Build Status (Appveyor)|
+|Coverage Status (Coveralls)|
 
-.. |Build Status| image:: https://travis-ci.org/eschnett/ASDF.svg?branch=master
-   :target: https://travis-ci.org/eschnett/ASDF
-.. |Coverage Status| image:: https://coveralls.io/repos/github/eschnett/ASDF/badge.svg?branch=master
-   :target: https://coveralls.io/github/eschnett/ASDF?branch=master
+.. |Build Status (Travis)| image:: https://travis-ci.org/eschnett/VectorSpaces.jl.svg?branch=master
+   :target: https://travis-ci.org/eschnett/VectorSpaces.jl
+.. |Build status (Appveyor)| image:: https://ci.appveyor.com/api/projects/status/4voe93gewdi9i0pq/branch/master?svg=true
+   :target: https://ci.appveyor.com/project/eschnett/asdf-jl/branch/master
+.. |Coverage Status (Coveralls)| image:: https://coveralls.io/repos/github/eschnett/VectorSpaces.jl/badge.svg?branch=master
+   :target: https://coveralls.io/github/eschnett/VectorSpaces.jl?branch=master
