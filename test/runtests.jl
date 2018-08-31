@@ -47,7 +47,7 @@ end
     @test typeof(tree) === ASDF.Tree
 
     scalar = tree["scalar"]
-    @test typeof(scalar) === Int
+    @test typeof(scalar) === Int64
     @test isequal(scalar, 0)
 
     array1d = tree["array1d"]
