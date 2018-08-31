@@ -323,7 +323,8 @@ function Base.getindex(arr::NDArray, i...)
 end
 
 function Base.size(arr::NDArray{T, D}) where {T, D}
-    arr.pyobj[:shape]::NTuple{D, Int}
+    # arr.pyobj[:shape]::NTuple{D, Int}
+    NTuple{D, Int}(arr.pyobj[:shape]::NTuple{D, Int64})
 end
 function Base.axes(arr::NDArray{T, D}) where {T, D}
     map(sz -> Base.Slice(0:sz-1),
