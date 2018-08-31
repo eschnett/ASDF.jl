@@ -28,7 +28,7 @@ const pkgpath = joinpath(dirname(pathof(ASDF)), "..")
 
     data = tree["data"]
     @test typeof(data) === ASDF.NDArray{Int64, 1}
-    @test isequal(collect(data), [0, 1, 2, 3, 4, 5, 6, 7])
+    @test isequal(collect(data), Int64[0, 1, 2, 3, 4, 5, 6, 7])
 
     ASDF.close(file)
 end
