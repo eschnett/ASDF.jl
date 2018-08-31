@@ -21,24 +21,22 @@ const Maybe{T} = Union{Nothing, T}
 
 ################################################################################
 
-const tagged_types = Dict{String, Type}()
-function wrap(obj::Any)
-    obj
-end
-function wrap(pyobj::PyObject)
+const tag2asdftype = Dict{String, Type}()
+
+function makeASDFType(pyobj::PyObject)
     tag = try
         pyobj[:yaml_tag]
     catch
-        @assert false           # for debugging
-        return pyobj
+        # Convert to a nice Julia type if possible
+        return convert(PyAny, pyobj)
     end
-    type_ = get(tagged_types, tag, empty)
+    type_ = get(tag2asdftype, tag, empty)
     if type_ === empty
         @show tag
         @assert false           # for debugging
         return pyobj
     end
-    type_(pyobj)
+    type_(pyobj)::ASDFType
 end
 
 
@@ -81,7 +79,7 @@ end
 
 
 function tree(file::File)::Tree
-    Tree(file.pyobj[:tree])
+    makeASDFType(file.pyobj["tree"]::PyObject)::Tree
 end
 
 
@@ -93,32 +91,20 @@ end
 # title: Top-level schema for every ASDF file.
 # additionalProperties: true
 
+"""Top-level schema for every ASDF file"""
 struct Tree
-    pyobj::Dict{Any, Any}
+    pyobj::PyObject
 end
-# tagged_types["tag:stsci.edu:asdf/core/asdf-1.1.0"] = Tree
-
-function Base.getindex(tree::Tree, key::String)
-    wrap(tree.pyobj[key])
-end
-function Base.get(tree::Tree, key::String, default)
-    # get(tree.pyobj, key, default)
-    value = get(tree.pyobj, key, empty)
-    if value === empty
-        return default
-    end
-    wrap(value)
-end
-function Base.setindex!(tree::Tree, value, key::String)
-    tree.pyobj[key] = value
-end
+tag2asdftype["tag:stsci.edu:asdf/core/asdf-1.1.0"] = Tree
+additionalProperties(::Tree) = ()
 
 function asdf_library(tree::Tree)::Maybe{Software}
-    software = get(tree.pyobj, "asdf_library", empty)
+    software = get(tree.pyobj, PyObject, "asdf_library", empty)
     if software === empty
         return nothing
     end
-    Software(software)
+    software::PyObject
+    makeASDFType(software)::Software
 end
 
 # History is apparently not supported by the Python ASDF library
@@ -133,39 +119,31 @@ end
 # required: [name, version]
 # additionalProperties: true
 
+"""Describes a software package"""
 struct Software
-    pyobj::Dict{Any, Any}
+    pyobj::PyObject
 end
-# tagged_types["tag:stsci.edu:schemas/asdf/core/software-1.0.0"] = Software
+tag2asdftype["tag:stsci.edu:asdf/core/software-1.0.0"] = Software
+additionalProperties(::Software) = ()
 
-function Base.getindex(software::Software, key::String)
-    software.pyobj[key]
-end
-function Base.get(software::Software, key::String, default)
-    get(software.pyobj, key, default)
-end
-function Base.setindex!(software::Software, value, key::String)
-    software.pyobj[key] = value
+function name(software::Software)
+    software.pyobj[:get]("name")::String
 end
 
-function name(software::Software)::String
-    software.pyobj["name"]
-end
-
-function author(software::Software)::Maybe{String}
-    get(software.pyobj, "author", nothing)
+function author(software::Software)
+    software.pyobj[:get]("author")::Maybe{String}
 end
 
 function homepage(software::Software)::Maybe{URI}
-    homepage = get(software.pyobj, "homepage", empty)
+    homepage = software.pyobj[:get]("homepage", empty)
     if homepage === empty
         return nothing
     end
-    URI(homepage)
+    URI(homepage)::URI
 end
 
 function version(software::Software)::Union{VersionNumber, String}
-    version = software.pyobj["version"]
+    version = software.pyobj[:get]("version")::String
     try
         VersionNumber(version)
     catch
@@ -181,71 +159,258 @@ end
 # tag: "tag:stsci.edu:asdf/core/ndarray-1.0.0"
 # title: An *n*-dimensional array.
 
+abstract type Datatype end
+
+@enum ScalarType begin
+    int8
+    uint8
+    int16
+    uint16
+    int32
+    uint32
+    int64
+    uint64
+    float32
+    float64
+    complex64
+    complex128
+    bool8
+    ascii
+    ucs4
+end
+const string2scalartype = Dict{String, ScalarType}(
+    "int8"       => int8,
+    "uint8"      => uint8,
+    "int16"      => int16,
+    "uint16"     => uint16,
+    "int32"      => int32,
+    "uint32"     => uint32,
+    "int64"      => int64,
+    "uint64"     => uint64,
+    "float32"    => float32,
+    "float64"    => float64,
+    "complex64"  => complex64,
+    "complex128" => complex128,
+    "bool8"      => bool8,
+    "ascii"      => ascii,
+    "ucs4"       => ucs4)
+const scalartype2type = Dict{ScalarType, Type}(
+    int8       => Int8,
+    uint8      => UInt8,
+    int16      => Int16,
+    uint16     => UInt16,
+    int32      => Int32,
+    uint32     => UInt32,
+    int64      => Int64,
+    uint64     => UInt64,
+    float32    => Float32,
+    float64    => Float64,
+    complex64  => ComplexF32,
+    complex128 => ComplexF64,
+    bool8      => Bool,
+    ascii      => String,
+    ucs4       => String)
+
+struct ScalarDatatype <: Datatype
+    type_::ScalarType
+    length::Int                 # only for ascii and ucs4; else -1
+    function ScalarDatatype(type_::ScalarType)
+        @assert type_ in [
+            int8, uint8, int16, uint16, int32, uint32, int64, uint64,
+            float32, float64, complex64, complex128,
+            bool8]
+        new(type_, -1)
+    end
+    function ScalarDatatype(type_::ScalarType, length::Int)
+        @assert type_ in [ascii, ucs4]
+        @assert length >= 0
+        new(type_, length)
+    end
+end
+
+function ScalarDatatype(type_::String, length...)
+    ScalarDatatype(string2scalartype[type_], length...)
+end
+
+function julia_type(scalardatatype::ScalarDatatype)
+    scalartype2type[scalardatatype.type_]
+end
+
+@enum Byteorder big little
+
+struct Field
+    name::Maybe{String}
+    datatype::Datatype
+    byteorder::Maybe{Byteorder}
+    shape::Maybe{Vector{Int}}
+end
+
+struct DatatypeList <: Datatype
+    types::Vector{Field}
+end
+
+# :alignment, :base, :byteorder, :char, :descr, :fields, :flags, :hasobject, :isalignedstruct, :isbuiltin, :isnative, :itemsize, :kind, :metadata, :name, :names, :ndim, :newbyteorder, :num, :shape, :str, :subdtype, :type
+function Datatype(dtype::PyObject)
+    if dtype[:names] !== nothing
+        # fields = []
+        # for name in dtype.names:
+        #     field = dtype.fields[name][0]
+        #     d = {}
+        #     d['name'] = name
+        #     field_dtype, byteorder = numpy_dtype_to_asdf_datatype(field)
+        #     d['datatype'] = field_dtype
+        #     if include_byteorder:
+        #         d['byteorder'] = byteorder
+        #     if field.shape:
+        #         d['shape'] = list(field.shape)
+        #     fields.append(d)
+        # return fields, numpy_byteorder_to_asdf_byteorder(dtype.byteorder)
+        @assert false
+
+    elseif dtype[:subdtype] !== nothing
+        # return numpy_dtype_to_asdf_datatype(dtype.subdtype[0])
+        @assert false
+
+    elseif dtype[:name] in keys(string2scalartype)
+        # return dtype.name, numpy_byteorder_to_asdf_byteorder(dtype.byteorder)
+        return ScalarDatatype(dtype[:name])
+
+    elseif dtype[:name] == "bool"
+        # return 'bool8', numpy_byteorder_to_asdf_byteorder(dtype.byteorder)
+        return ScalarDatatype(bool8)
+
+    elseif startswith(dtype[:name], "string") ||
+            startswith(dtype[:name], "bytes")
+        # return ['ascii', dtype.itemsize], 'big'
+        @assert false
+
+    elseif startswith(dtype[:name], "unicode") ||
+            startswith(dtype[:name], "str")
+        # return (['ucs4', int(dtype.itemsize / 4)],
+        #         numpy_byteorder_to_asdf_byteorder(dtype.byteorder))
+        @assert false
+
+    end
+    @assert false
+end
+
+
+
+"""An *n*-dimensional array"""
 struct NDArray{T, D} <: DenseArray{T, D}
     pyobj::PyObject
 end
-tagged_types["tag:stsci.edu:asdf/core/ndarray-1.0.0"] = NDArray
+tag2asdftype["tag:stsci.edu:asdf/core/ndarray-1.0.0"] = NDArray
 
 function NDArray(pyobj::PyObject)
     D = length(pyobj[:shape])
-    T = Int
+    T = julia_type(Datatype(pyobj[:dtype]))
     NDArray{T, D}(pyobj)
 end
 
 function Base.getindex(arr::NDArray{T, D}, i::NTuple{D, Int}) where {T, D}
-    @boundscheck checkindex(Bool, axes(arr), i)
-    arr.pyobj[i...]::T
+    @boundscheck @assert all(checkindex(Bool, axes(arr)[d], i[d]) for d in 1:D)
+    pycall(arr.pyobj[:__getitem__], T, i)::T
 end
-function Base.getindex(arr::NDArray{T, D}, i::NTuple{D, I}) where {
-        T, D, I<:Integer}
-    arr.pyobj[NTuple{D, Int}(i)]
+function Base.getindex(arr::NDArray{T, D}, i::NTuple{D, I}) where {T, D, I}
+    arr[NTuple{D, Int}(i)]
 end
 function Base.getindex(arr::NDArray{T, D}, i::CartesianIndex{D}) where {T, D}
     arr[Tuple(i)]
 end
-function Base.getindex(arr::NDArray, i::Integer...)
+function Base.getindex(arr::NDArray, i...)
     arr[i]
 end
 
-Base.IteratorSize(::Type{<:NDArray{T, D}}) where {T, D} = HasShape{D}()
-Base.eltype(::Type{NDArray{T, D}}) where {T, D} = T
-function Base.ndims(arr::NDArray{T, D}) where {T, D}
-    D::Int
-end
 function Base.size(arr::NDArray{T, D}) where {T, D}
     arr.pyobj[:shape]::NTuple{D, Int}
 end
-function Base.size(arr::NDArray, d::Int)
-    size(arr)[d]
-end
 function Base.axes(arr::NDArray{T, D}) where {T, D}
-    Base.OneTo.(size(arr))::NTuple{D, OneTo{Int}}
+    map(sz -> Base.Slice(0:sz-1),
+        size(arr))::NTuple{D, Base.Slice{UnitRange{Int}}}
 end
-function Base.axes(arr::NDArray, d::Int)
-    axes(arr)[d]
+function Base.eachindex(::IndexCartesian, arr::NDArray)
+    CartesianIndices(axes(arr))
 end
-function Base.eachindex(arr::NDArray)
-    
+function Base.eachindex(::IndexLinear, arr::NDArray)
+    axes(arr, 1)
 end
 @generated function size2stride(size::NTuple{D, Int}) where {D}
     quote
         str = 1
-        $(((quote
-                $(Symbol("str", d)) = str
-                str *= sidz[d]
-            end) for d in D:-1:1)...)
+        $((quote
+               $(Symbol("str", d)) = str
+               str *= size[$d]
+           end
+           for d in D:-1:1)...)
         tuple($((Symbol("str", d) for d in 1:D)...))::NTuple{D, Int}
     end
 end
+# @generated function size2stride(size::NTuple{D, Int}) where {D}
+#     str_d(d) = Symbol("str", d)
+#     stmts = []
+#     push!(stmts, :(str = 1))
+#     for d in D:-1:1
+#         push!(stmts, :($(str_d(d)) = str))
+#         push!(stmts, :(str *= size[$d]))
+#     end
+#     args = [str_d(d) for d in 1:D]
+#     expr = :(tuple($(args...))::NTuple{D, Int})
+#     push!(stmts, expr)
+#     quote
+#         $(stmts...)
+#     end
+# end
 function Base.strides(arr::NDArray)
     size2stride(size(arr))
 end
-function Base.stride(arr::NDArray, d::Int)
-    strides(arr)[d]
+
+Base.IteratorSize(::Type{<:NDArray{T, D}}) where {T, D} = HasShape{D}()
+function Base.iterate(arr::NDArray)
+    iter = eachindex(arr)
+    res = iterate(iter)
+    if res === nothing
+        return nothing
+    end
+    idx, state = res
+    arr[idx], state
+end
+function Base.iterate(arr::NDArray, state)
+    iter = eachindex(arr)
+    res = iterate(iter, state)
+    if res === nothing
+        return nothing
+    end
+    idx, state = res
+    arr[idx], state
 end
 
 
 
 ################################################################################
+
+const ASDFType = Union{Tree, Software, NDArray}
+
+function Base.getindex(obj::ASDFType, key::String)
+    additionalProperties(obj)   # check
+    makeASDFType(get(obj.pyobj, PyObject, key))
+end
+function Base.get(obj::ASDFType, key::String, default)
+    additionalProperties(obj)   # check
+    value = get(obj.pyobj, PyObject, key, empty)
+    if value === empty
+        return default
+    end
+    makeASDFType(value)::ASDFType
+end
+function Base.setindex!(obj::ASDFType, value::ASDFType, key::String)
+    additionalProperties(obj)   # check
+    obj.pyobj[key] = value.pyobj
+end
+function Base.delete!(obj::ASDFType, key::String)
+    additionalProperties(obj)   # check
+    delete!(obj.pyobj, key)
+    obj
+end
 
 end
