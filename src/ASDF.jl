@@ -249,7 +249,6 @@ struct DatatypeList <: Datatype
     types::Vector{Field}
 end
 
-# :alignment, :base, :byteorder, :char, :descr, :fields, :flags, :hasobject, :isalignedstruct, :isbuiltin, :isnative, :itemsize, :kind, :metadata, :name, :names, :ndim, :newbyteorder, :num, :shape, :str, :subdtype, :type
 function Datatype(dtype::PyObject)
     if dtype[:names] !== nothing
         # fields = []
@@ -272,23 +271,18 @@ function Datatype(dtype::PyObject)
         @assert false
 
     elseif dtype[:name] in keys(string2scalartype)
-        # return dtype.name, numpy_byteorder_to_asdf_byteorder(dtype.byteorder)
         return ScalarDatatype(dtype[:name])
 
     elseif dtype[:name] == "bool"
-        # return 'bool8', numpy_byteorder_to_asdf_byteorder(dtype.byteorder)
         return ScalarDatatype(bool8)
 
     elseif startswith(dtype[:name], "string") ||
             startswith(dtype[:name], "bytes")
-        # return ['ascii', dtype.itemsize], 'big'
-        @assert false
+        return ScalarDatatype(ascii, dtype[:itemsize])
 
     elseif startswith(dtype[:name], "unicode") ||
             startswith(dtype[:name], "str")
-        # return (['ucs4', int(dtype.itemsize / 4)],
-        #         numpy_byteorder_to_asdf_byteorder(dtype.byteorder))
-        @assert false
+        return ScalarDatatype(ucs4, dtype[:itemsize] ÷ 4)
 
     end
     @assert false
@@ -323,7 +317,6 @@ function Base.getindex(arr::NDArray, i...)
 end
 
 function Base.size(arr::NDArray{T, D}) where {T, D}
-    # arr.pyobj[:shape]::NTuple{D, Int}
     NTuple{D, Int}(arr.pyobj[:shape]::NTuple{D, Int64})
 end
 function Base.axes(arr::NDArray{T, D}) where {T, D}
