@@ -425,8 +425,7 @@ end
 
         # Compare content
         ignored_keys = Set(["asdf_library", "history"])
-        @test length(tree2) == length(tree) + length(ignored_keys)
-        @test keys(tree2) == union(keys(tree), ignored_keys)
+        @test setdiff(keys(tree2), ignored_keys) == keys(tree)
         for (key, value) in tree
             if !(key in ignored_keys)
                 if typeof(value) <: AbstractArray

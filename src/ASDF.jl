@@ -16,6 +16,8 @@ struct Empty end
 const empty = Empty()
 
 const Maybe{T} = Union{Nothing, T}
+nothing2tuple(x) = x
+nothing2tuple(::Nothing) = ()
 
 
 
@@ -77,6 +79,11 @@ function Base.VersionNumber(obj::PyObject)
     VersionNumber(
         obj[:major], obj[:minor], obj[:patch], obj[:prerelease], obj[:build])
 end
+function Base.VersionNumber(obj::Dict)
+    VersionNumber(
+        obj["major"], obj["minor"], obj["patch"],
+        nothing2tuple(obj["prerelease"]), nothing2tuple(obj["build"]))
+end
 
 
 
@@ -103,6 +110,7 @@ end
 struct Tree
     pyobj::PyObject
 end
+tag2asdftype["tag:stsci.edu:asdf/core/asdf-1.0.0"] = Tree
 tag2asdftype["tag:stsci.edu:asdf/core/asdf-1.1.0"] = Tree
 additionalProperties(::Tree) = ()
 
