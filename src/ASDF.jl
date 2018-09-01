@@ -278,11 +278,11 @@ function Datatype(dtype::PyObject)
 
     elseif startswith(dtype[:name], "string") ||
             startswith(dtype[:name], "bytes")
-        return ScalarDatatype(ascii, dtype[:itemsize])
+        return ScalarDatatype(ascii, Int(dtype[:itemsize]))
 
     elseif startswith(dtype[:name], "unicode") ||
             startswith(dtype[:name], "str")
-        return ScalarDatatype(ucs4, dtype[:itemsize] ÷ 4)
+        return ScalarDatatype(ucs4, Int(dtype[:itemsize]) ÷ 4)
 
     end
     @assert false
@@ -301,6 +301,8 @@ function NDArray(pyobj::PyObject)
     T = julia_type(Datatype(pyobj[:dtype]))
     NDArray{T, D}(pyobj)
 end
+
+Base.convert
 
 function Base.getindex(arr::NDArray{T, D}, i::NTuple{D, Int}) where {T, D}
     @boundscheck @assert all(checkindex(Bool, axes(arr)[d], i[d]) for d in 1:D)
