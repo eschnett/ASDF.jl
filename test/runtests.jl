@@ -28,7 +28,7 @@ const pkgpath = joinpath(dirname(pathof(ASDF)), "..")
 
     data = tree["data"]
     @test typeof(data) === ASDF.NDArray{Int64, 1}
-    @test isequal(collect(data), Int64[0, 1, 2, 3, 4, 5, 6, 7])
+    @test isequal(collect(data), Int64[i for i in 0:7])
 
     ASDF.close(file)
 end
@@ -144,12 +144,12 @@ end
     data = tree["bzp2"]
     @test typeof(data) === ASDF.NDArray{Int64, 1}
     @test size(data) == (128,)
-    @test isequal(collect(data), Vector{Int64}(collect(0:127)))
+    @test isequal(collect(data), Int64[i for i in 0:127])
 
     data = tree["zlib"]
     @test typeof(data) === ASDF.NDArray{Int64, 1}
     @test size(data) == (128,)
-    @test isequal(collect(data), Vector{Int64}(collect(0:127)))
+    @test isequal(collect(data), Int64[i for i in 0:127])
 
     ASDF.close(file)
 end
@@ -170,7 +170,7 @@ end
     data = tree["data"]
     @test typeof(data) === ASDF.NDArray{Int64, 1}
     @test size(data) == (8,)
-    @test isequal(collect(data), Vector{Int64}(collect(0:7)))
+    @test isequal(collect(data), Int64[i for i in 0:7])
 
     ASDF.close(file)
 end
@@ -315,12 +315,12 @@ end
     data = tree["data"]
     @test typeof(data) === ASDF.NDArray{Int64, 1}
     @test size(data) == (8,)
-    @test isequal(collect(data), Vector{Int64}(collect(0:7)))
+    @test isequal(collect(data), Int64[i for i in 0:7])
 
     data = tree["subset"]
     @test typeof(data) === ASDF.NDArray{Int64, 1}
     @test size(data) == (4,)
-    @test isequal(collect(data), Vector{Int64}(collect(1:2:7)))
+    @test isequal(collect(data), Int64[i for i in 1:2:7])
 
     ASDF.close(file)
 end
@@ -341,15 +341,7 @@ end
     data = tree["my_stream"]
     @test typeof(data) === ASDF.NDArray{Float64, 2}
     @test size(data) == (8, 8)
-    @test isequal(collect(data),
-                  Float64[0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0;
-                          1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0;
-                          2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0;
-                          3.0 3.0 3.0 3.0 3.0 3.0 3.0 3.0;
-                          4.0 4.0 4.0 4.0 4.0 4.0 4.0 4.0;
-                          5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0;
-                          6.0 6.0 6.0 6.0 6.0 6.0 6.0 6.0;
-                          7.0 7.0 7.0 7.0 7.0 7.0 7.0 7.0])
+    @test isequal(collect(data), Float64[i for i in 0:7, j in 0:7])
 
     ASDF.close(file)
 end
@@ -404,4 +396,45 @@ end
     @test isequal(collect(data), String["", "\U00010020"])
 
     ASDF.close(file)
+end
+
+
+
+@testset "output" begin
+    mktempdir() do dir
+
+        # Create a file
+        tree = Dict{String, Any}(
+            "scalarb" => true,
+            "scalari" => 12345678,
+            "scalarf" => 1234.5678,
+            "scalarc" => 12.34+56.78im,
+            "scalars" => String(Char[i for i in 0:300]),
+            "array1d" => Int8[i for i in 1:2],
+            # TODO: Waiting for
+            # <https://github.com/spacetelescope/asdf/issues/538>
+            # "array2d" => Int16[i+10j for i in 1:2, j in 1:3],
+            # "array3d" => Int32[i+10j+100k for i in 1:2, j in 1:3, k in 1:4],
+            "strings" => String["hello", "world"])
+        file = ASDF.File(tree)
+        ASDF.write_to(file, joinpath(dir, "output.asdf"))
+
+        # Read the file back in
+        file2 = ASDF.open(joinpath(dir, "output.asdf"))
+        tree2 = ASDF.tree(file2)
+
+        # Compare content
+        ignored_keys = Set(["asdf_library", "history"])
+        @test length(tree2) == length(tree) + length(ignored_keys)
+        @test keys(tree2) == union(keys(tree), ignored_keys)
+        for (key, value) in tree
+            if !(key in ignored_keys)
+                if typeof(value) <: AbstractArray
+                    @test isequal(collect(tree2[key]), value)
+                else
+                    @test isequal(tree2[key], value)
+                end
+            end
+        end
+    end
 end

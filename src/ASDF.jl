@@ -47,12 +47,20 @@ struct File
     pyobj::PyObject
 end
 
+function File(dict::Dict)       # for convenience
+    File(asdf[:AsdfFile](dict))
+end
+
 function open(filename::AbstractString)::File
     File(asdf[:open](filename))
 end
 
 function close(file::File)::Nothing
     file.pyobj[:close]()
+end
+
+function write_to(file::File, filename::AbstractString)::Nothing
+    file.pyobj[:write_to](filename)
 end
 
 
@@ -97,6 +105,12 @@ struct Tree
 end
 tag2asdftype["tag:stsci.edu:asdf/core/asdf-1.1.0"] = Tree
 additionalProperties(::Tree) = ()
+
+# This constructor must come after the type Tree has been defined
+# TODO: Reverse order of types in this file
+function File(tree::Tree)
+    File(asdf[:AsdfFile](tree.pyobj))
+end
 
 function asdf_library(tree::Tree)::Maybe{Software}
     software = get(tree.pyobj, PyObject, "asdf_library", empty)
@@ -331,34 +345,8 @@ end
 function Base.eachindex(::IndexLinear, arr::NDArray)
     axes(arr, 1)
 end
-@generated function size2stride(size::NTuple{D, Int}) where {D}
-    quote
-        str = 1
-        $((quote
-               $(Symbol("str", d)) = str
-               str *= size[$d]
-           end
-           for d in D:-1:1)...)
-        tuple($((Symbol("str", d) for d in 1:D)...))::NTuple{D, Int}
-    end
-end
-# @generated function size2stride(size::NTuple{D, Int}) where {D}
-#     str_d(d) = Symbol("str", d)
-#     stmts = []
-#     push!(stmts, :(str = 1))
-#     for d in D:-1:1
-#         push!(stmts, :($(str_d(d)) = str))
-#         push!(stmts, :(str *= size[$d]))
-#     end
-#     args = [str_d(d) for d in 1:D]
-#     expr = :(tuple($(args...))::NTuple{D, Int})
-#     push!(stmts, expr)
-#     quote
-#         $(stmts...)
-#     end
-# end
 function Base.strides(arr::NDArray)
-    size2stride(size(arr))
+    Base.size_to_strides(1, reverse(size(arr))...)
 end
 
 Base.IteratorSize(::Type{<:NDArray{T, D}}) where {T, D} = HasShape{D}()
@@ -407,6 +395,35 @@ function Base.delete!(obj::ASDFType, key::String)
     additionalProperties(obj)   # check
     delete!(obj.pyobj, key)
     obj
+end
+
+function Base.length(obj::ASDFType)
+    Int(obj.pyobj[:__len__]())
+end
+function Base.keys(obj::ASDFType)
+    iter = obj.pyobj[:keys]()[:__iter__]()
+    keys = String[]
+    while true
+        try
+            key = iter[:__next__]()
+            push!(keys, key)
+        catch
+            # TODO: Check for Python StopIteration exception
+            break
+        end
+    end
+    Set(keys)
+end
+function Base.iterate(obj::ASDFType)
+    Base.iterate(obj, obj.pyobj[:__iter__]())
+end
+function Base.iterate(obj::ASDFType, iter)
+    try
+        iter[:__next__](), iter
+    catch
+        # TODO: Check for Python StopIteration exception
+        nothing
+    end
 end
 
 end
