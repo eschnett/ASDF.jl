@@ -413,8 +413,8 @@ end
             "array1d" => Int8[i for i in 1:2],
             # TODO: Waiting for
             # <https://github.com/spacetelescope/asdf/issues/538>
-            # "array2d" => Int16[i+10j for i in 1:2, j in 1:3],
-            # "array3d" => Int32[i+10j+100k for i in 1:2, j in 1:3, k in 1:4],
+            "array2d" => Int16[i+10j for i in 1:2, j in 1:3],
+            "array3d" => Int32[i+10j+100k for i in 1:2, j in 1:3, k in 1:4],
             "strings" => String["hello", "world"])
         file = ASDF.File(tree)
         ASDF.write_to(file, joinpath(dir, "output.asdf"))

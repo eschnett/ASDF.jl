@@ -5,7 +5,8 @@ using URIParser
 
 const asdf = PyNULL()
 function __init__()
-    copy!(asdf, pyimport_conda("asdf", "asdf", "astropy"))
+    # copy!(asdf, pyimport_conda("asdf", "asdf", "astropy"))
+    copy!(asdf, pyimport("asdf"))
 end
 
 
