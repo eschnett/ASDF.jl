@@ -15,8 +15,8 @@ notifications:
   email: false
 script:
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-  - julia -e 'Pkg.clone(pwd()); Pkg.build("ASDF")' || true # The first build might fail
-  - julia -e 'Pkg.build("ASDF"); Pkg.test("ASDF"; coverage=true)';
+  - julia -e 'using Pkg; Pkg.build()' || true # The first build might fail
+  - julia -e 'Pkg.build(); Pkg.test()';
 after_success:
   - julia -e 'cd(Pkg.dir("ASDF")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())';
 #  - julia -e 'cd(Pkg.dir("ASDF")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())';
