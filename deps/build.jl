@@ -1,4 +1,28 @@
-using PyCall
+# using Conda
+# using PyCall
+# 
+# if PyCall.conda
+#     # Check whether asdf is already installed
+#     try
+#         pyimport("asdf")
+#     catch
+#         # Install asdf
+#         Conda.add_channel("conda-forge")
+#     
+#         # The first install sometimes fails with a strange numpy
+#         # problem. We thus run it as throw-away command. Note that
+#         # calling `Conda.add` aborts on errors, so we have to use this
+#         # lower-level equivalent.
+#         try
+#             Conda.runconda(`install -y asdf`)
+#         catch
+#         end
+#     end
+# end
+
+
+
+ using PyCall
 
 const asdf = pyimport_conda("asdf", "asdf", "conda-forge")
 # const asdf = pyimport_conda("asdf", "asdf", "astropy")
