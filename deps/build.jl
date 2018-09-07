@@ -5,7 +5,7 @@ const asdf = pyimport_conda("asdf", "asdf", "conda-forge")
 
 version = VersionNumber(asdf[:__version__])
 @info "Using Python asdf library version $version"
-if false && version < v"2.0.3"
+if version < v"2.0.3"
     @error "This version is unsupported"
     exit(1)
 end
