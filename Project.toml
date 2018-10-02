@@ -1,7 +1,7 @@
 name = "ASDF"
 uuid = "c960a2f4-9f0f-11e8-3f7c-470e5e0ab716"
 authors = ["Erik Schnetter <schnetter@gmail.com>"]
-version = "0.1.0"
+version = "1.0.0"
 
 [deps]
 PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
