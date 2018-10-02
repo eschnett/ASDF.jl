@@ -314,64 +314,110 @@ end
 
 
 
+const PyArrayTypes = Union{
+    Bool,
+    Int8, Int16, Int32, Int64, Int128,
+    UInt8, UInt16, UInt32, UInt64, UInt128,
+    Float16, Float32, Float64,
+    ComplexF16, ComplexF32, ComplexF64}
+
 """An *n*-dimensional array"""
-struct NDArray{T, D} <: DenseArray{T, D}
-    pyobj::PyObject
+struct NDArray{T, D, Repr <: Union{PyArray, PyObject}} <: DenseArray{T, D}
+    # An NDArray either uses a PyArray (if possible) or a PyObject
+    # as internal representation
+    repr::Repr
+    function NDArray{T, D, PyArray{T, D}}(pyobj::PyObject) where {T, D}
+        new{T, D, PyArray{T, D}}(PyArray(pyobj))
+    end
+    function NDArray{T, D, PyObject}(pyobj::PyObject) where {T, D}
+        new{T, D, PyObject}(pyobj)
+    end
+    function NDArray{T, D}(pyobj::PyObject) where {T, D}
+        isefficient = T <: PyArrayTypes
+        if isefficient
+            info = PyArray_Info(pyobj)
+            isefficient = info.native  # byteorder is native
+        end
+        if isefficient
+            # There is an efficient PyArray implementation
+            NDArray{T, D, PyArray{T, D}}(pyobj)
+        else
+            # Fallback for other (e.g. string) types
+            NDArray{T, D, PyObject}(pyobj)
+        end
+    end
+    function NDArray(pyobj::PyObject)
+        # Determine element type and rank
+        T = julia_type(Datatype(pyobj[:dtype]))
+        D = length(pyobj[:shape])
+        NDArray{T, D}(pyobj)
+    end
 end
 tag2asdftype["tag:stsci.edu:asdf/core/ndarray-1.0.0"] = NDArray
 
-function NDArray(pyobj::PyObject)
-    D = length(pyobj[:shape])
-    T = julia_type(Datatype(pyobj[:dtype]))
-    NDArray{T, D}(pyobj)
-end
+const FastNDArray = NDArray{T, D, PyArray{T, D}} where {T <: PyArrayTypes, D}
+const SlowNDArray = NDArray{T, D, PyObject} where {T, D}
+pyarr(arr::FastNDArray{T, D}) where {T, D} = arr.repr::PyArray{T, D}
+pyobj(arr::SlowNDArray{T, D}) where {T, D} = arr.repr::PyObject
 
-Base.convert
+isefficient(::Type{NDArray{T, D, PyArray{T, D}}}) where {T, D} = true
+isefficient(::Type{NDArray{T, D, PyObject}}) where {T, D} = false
+isefficient(::T) where {T <: NDArray} = isefficient(T)
 
-function Base.getindex(arr::NDArray{T, D}, i::NTuple{D, Int}) where {T, D}
-    @boundscheck @assert all(checkindex(Bool, axes(arr)[d], i[d]) for d in 1:D)
-    pycall(arr.pyobj[:__getitem__], T, i)::T
-end
-function Base.getindex(arr::NDArray{T, D}, i::NTuple{D, I}) where {T, D, I}
-    arr[NTuple{D, Int}(i)]
-end
-function Base.getindex(arr::NDArray{T, D}, i::CartesianIndex{D}) where {T, D}
-    arr[Tuple(i)]
-end
-function Base.getindex(arr::NDArray, i...)
-    arr[i]
-end
+# PyArray-based implementation
+Base.axes(arr::FastNDArray) = axes(pyarr(arr))
+Base.eachindex(ind::IndexCartesian, arr::FastNDArray) =
+    eachindex(ind, pyarr(arr))
+Base.eachindex(ind::IndexLinear, arr::FastNDArray) = eachindex(ind, pyarr(arr))
+Base.getindex(arr::FastNDArray, i) = pyarr(arr)[i]
+Base.length(arr::FastNDArray) = length(pyarr(arr))
+Base.ndims(arr::FastNDArray) = ndims(pyarr(arr))
+Base.size(arr::FastNDArray) = size(pyarr(arr))
+Base.strides(arr::FastNDArray) = strides(pyarr(arr))
 
-function Base.size(arr::NDArray{T, D}) where {T, D}
-    NTuple{D, Int}(arr.pyobj[:shape]::NTuple{D, Int64})
-end
-function Base.axes(arr::NDArray{T, D}) where {T, D}
+Base.IteratorSize(::Type{<:NDArray{T, D, PyArray{T, D}}}) where {T, D} =
+    HasShape{D}()
+Base.iterate(arr::FastNDArray, state...) = iterate(pyarr(arr), state...)
+
+# PyObject-based implementation
+function Base.axes(arr::SlowNDArray{T, D}) where {T, D}
     map(sz -> Base.Slice(0:sz-1),
         size(arr))::NTuple{D, Base.Slice{UnitRange{Int}}}
 end
-function Base.eachindex(::IndexCartesian, arr::NDArray)
+function Base.eachindex(::IndexCartesian, arr::SlowNDArray)
     CartesianIndices(axes(arr))
 end
-function Base.eachindex(::IndexLinear, arr::NDArray)
+function Base.eachindex(::IndexLinear, arr::SlowNDArray)
     axes(arr, 1)
 end
-function Base.strides(arr::NDArray)
+function Base.getindex(arr::SlowNDArray{T, D}, i::NTuple{D, Int}) where {T, D}
+    @boundscheck @assert all(checkindex(Bool, axes(arr)[d], i[d]) for d in 1:D)
+    pycall(pyobj(arr)[:__getitem__], T, i)::T
+end
+function Base.getindex(arr::SlowNDArray{T, D}, i::NTuple{D, I}) where {T, D, I}
+    arr[NTuple{D, Int}(i)]
+end
+function Base.getindex(arr::SlowNDArray{T, D}, i::CartesianIndex{D}) where {
+        T, D}
+    arr[Tuple(i)]
+end
+function Base.getindex(arr::SlowNDArray, i...)
+    arr[i]
+end
+function Base.ndims(arr::SlowNDArray{T, D}) where {T, D}
+    D
+end
+function Base.size(arr::SlowNDArray{T, D}) where {T, D}
+    NTuple{D, Int}(pyobj(arr)[:shape]::NTuple{D, Int64})
+end
+function Base.strides(arr::SlowNDArray)
     Base.size_to_strides(1, reverse(size(arr))...)
 end
 
-Base.IteratorSize(::Type{<:NDArray{T, D}}) where {T, D} = HasShape{D}()
-function Base.iterate(arr::NDArray)
+Base.IteratorSize(::Type{<:SlowNDArray{T, D}}) where {T, D} = HasShape{D}()
+function Base.iterate(arr::SlowNDArray, state...)
     iter = eachindex(arr)
-    res = iterate(iter)
-    if res === nothing
-        return nothing
-    end
-    idx, state = res
-    arr[idx], state
-end
-function Base.iterate(arr::NDArray, state)
-    iter = eachindex(arr)
-    res = iterate(iter, state)
+    res = iterate(iter, state...)
     if res === nothing
         return nothing
     end
