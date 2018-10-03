@@ -84,9 +84,9 @@ julia> tree["comment"]
 julia> # Extract the lookup table
 julia> tree["table"]
 Dict{Any,Any} with 3 entries:
-  "c" => "cee"
-  "b" => 2.0
-  "a" => 1
+    "c" => "cee"
+    "b" => 2.0
+    "a" => 1
 julia> # Extract the array
 julia> typeof(tree["data"])
 ASDF.NDArray{Float32,2,PyCall.PyArray{Float32,2}}
