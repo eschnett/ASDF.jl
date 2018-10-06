@@ -7,7 +7,7 @@ julia:
   - "1.0"
   - "nightly"
 env:
-  - PYTHON=
+  - PYTHON=   # Always use Conda
 matrix:
   allow_failures:
     - julia: nightly
