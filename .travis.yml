@@ -15,9 +15,7 @@ notifications:
   email: false
 script:
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-  # The first "build" sometimes fails due to a strange numpy problem
-  # - julia -e 'using Pkg; Pkg.build(); Pkg.build(); Pkg.test(coverage=true)';
   - julia -e 'using Pkg; Pkg.build(); Pkg.test(coverage=true)';
 after_success:
-  - julia -e 'cd(Pkg.dir("ASDF")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())';
-#  - julia -e 'cd(Pkg.dir("ASDF")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())';
+  - julia -e 'using Pkg; cd(Pkg.dir("ASDF")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())';
+#  - julia -e 'using Pkg; cd(Pkg.dir("ASDF")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())';
