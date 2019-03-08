@@ -5,6 +5,7 @@ A Julia library for the [Advanced Scientific Data Format (ASDF)](https://asdf-st
 [![Build Status (Travis)](https://travis-ci.org/eschnett/ASDF.jl.svg?branch=master)](https://travis-ci.org/eschnett/ASDF.jl)
 [![Build Status (Appveyor)](https://ci.appveyor.com/api/projects/status/4voe93gewdi9i0pq/branch/master?svg=true)](https://ci.appveyor.com/project/eschnett/asdf-jl/branch/master)
 [![Coverage Status (Coveralls)](https://coveralls.io/repos/github/eschnett/ASDF.jl/badge.svg?branch=master)](https://coveralls.io/github/eschnett/ASDF.jl?branch=master)
+[![DOI](https://zenodo.org/badge/144600920.svg)](https://zenodo.org/badge/latestdoi/144600920)
 
 ## Overview
 
