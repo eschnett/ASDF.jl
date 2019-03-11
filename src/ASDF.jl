@@ -29,7 +29,7 @@ const tag2asdftype = Dict{String, Type}()
 
 function makeASDFType(pyobj::PyObject)
     tag = try
-        pyobj[:yaml_tag]
+        pyobj.yaml_tag
     catch
         # Convert to a nice Julia type if possible
         return convert(PyAny, pyobj)
@@ -52,34 +52,34 @@ struct File
 end
 
 function File(dict::Dict)       # for convenience
-    File(asdf[:AsdfFile](dict))
+    File(asdf.AsdfFile(dict))
 end
 
 function open(filename::AbstractString)::File
-    File(asdf[:open](filename))
+    File(asdf.open(filename))
 end
 
 function close(file::File)::Nothing
-    file.pyobj[:close]()
+    file.pyobj.close()
 end
 
 function write_to(file::File, filename::AbstractString)::Nothing
-    file.pyobj[:write_to](filename)
+    file.pyobj.write_to(filename)
 end
 
 
 
 function file_format_version(file::File)::VersionNumber
-    VersionNumber(file.pyobj[:file_format_version])
+    VersionNumber(file.pyobj.file_format_version)
 end
 
 function version(file::File)::VersionNumber
-    VersionNumber(file.pyobj[:version])
+    VersionNumber(file.pyobj.version)
 end
 
 function Base.VersionNumber(obj::PyObject)
     VersionNumber(
-        obj[:major], obj[:minor], obj[:patch], obj[:prerelease], obj[:build])
+        obj.major, obj.minor, obj.patch, obj.prerelease, obj.build)
 end
 function Base.VersionNumber(obj::Dict)
     VersionNumber(
@@ -90,13 +90,13 @@ end
 
 
 function comments(file::File)::Vector{String}
-    file.pyobj[:comments]
+    file.pyobj.comments
 end
 
 
 
 function tree(file::File)::Tree
-    makeASDFType(file.pyobj["tree"]::PyObject)::Tree
+    makeASDFType(file.pyobj."tree"::PyObject)::Tree
 end
 
 
@@ -119,7 +119,7 @@ additionalProperties(::Tree) = ()
 # This constructor must come after the type Tree has been defined
 # TODO: Reverse order of types in this file
 function File(tree::Tree)
-    File(asdf[:AsdfFile](tree.pyobj))
+    File(asdf.AsdfFile(tree.pyobj))
 end
 
 function asdf_library(tree::Tree)::Maybe{Software}
@@ -151,15 +151,15 @@ tag2asdftype["tag:stsci.edu:asdf/core/software-1.0.0"] = Software
 additionalProperties(::Software) = ()
 
 function name(software::Software)
-    software.pyobj[:get]("name")::String
+    software.pyobj.get("name")::String
 end
 
 function author(software::Software)
-    software.pyobj[:get]("author")::Maybe{String}
+    software.pyobj.get("author")::Maybe{String}
 end
 
 function homepage(software::Software)::Maybe{URI}
-    homepage = software.pyobj[:get]("homepage", empty)
+    homepage = software.pyobj.get("homepage", empty)
     if homepage === empty
         return nothing
     end
@@ -167,7 +167,7 @@ function homepage(software::Software)::Maybe{URI}
 end
 
 function version(software::Software)::Union{VersionNumber, String}
-    version = software.pyobj[:get]("version")::String
+    version = software.pyobj.get("version")::String
     try
         VersionNumber(version)
     catch
@@ -274,7 +274,7 @@ struct DatatypeList <: Datatype
 end
 
 function Datatype(dtype::PyObject)
-    if dtype[:names] !== nothing
+    if dtype.names !== nothing
         # fields = []
         # for name in dtype.names:
         #     field = dtype.fields[name][0]
@@ -290,23 +290,23 @@ function Datatype(dtype::PyObject)
         # return fields, numpy_byteorder_to_asdf_byteorder(dtype.byteorder)
         @assert false
 
-    elseif dtype[:subdtype] !== nothing
+    elseif dtype.subdtype !== nothing
         # return numpy_dtype_to_asdf_datatype(dtype.subdtype[0])
         @assert false
 
-    elseif dtype[:name] in keys(string2scalartype)
-        return ScalarDatatype(dtype[:name])
+    elseif dtype.name in keys(string2scalartype)
+        return ScalarDatatype(dtype.name)
 
-    elseif dtype[:name] == "bool"
+    elseif dtype.name == "bool"
         return ScalarDatatype(bool8)
 
-    elseif startswith(dtype[:name], "string") ||
-            startswith(dtype[:name], "bytes")
-        return ScalarDatatype(ascii, Int(dtype[:itemsize]))
+    elseif startswith(dtype.name, "string") ||
+            startswith(dtype.name, "bytes")
+        return ScalarDatatype(ascii, Int(dtype.itemsize))
 
-    elseif startswith(dtype[:name], "unicode") ||
-            startswith(dtype[:name], "str")
-        return ScalarDatatype(ucs4, Int(dtype[:itemsize]) ÷ 4)
+    elseif startswith(dtype.name, "unicode") ||
+            startswith(dtype.name, "str")
+        return ScalarDatatype(ucs4, Int(dtype.itemsize) ÷ 4)
 
     end
     @assert false
@@ -355,8 +355,8 @@ struct NDArray{T, D, Repr <: Union{PyArray, PyObject}} <: DenseArray{T, D}
     end
     function NDArray(pyobj::PyObject)
         # Determine element type and rank
-        T = julia_type(Datatype(pyobj[:dtype]))
-        D = length(pyobj[:shape])
+        T = julia_type(Datatype(pyobj.dtype))
+        D = length(pyobj.shape)
         NDArray{T, D}(pyobj)
     end
 end
@@ -399,7 +399,7 @@ function Base.eachindex(::IndexLinear, arr::SlowNDArray)
 end
 function Base.getindex(arr::SlowNDArray{T, D}, i::NTuple{D, Int}) where {T, D}
     @boundscheck @assert all(checkindex(Bool, axes(arr)[d], i[d]) for d in 1:D)
-    pycall(pyobj(arr)[:__getitem__], T, i)::T
+    pycall(pyobj(arr).__getitem__, T, i)::T
 end
 function Base.getindex(arr::SlowNDArray{T, D}, i::NTuple{D, I}) where {T, D, I}
     arr[NTuple{D, Int}(i)]
@@ -415,7 +415,7 @@ function Base.ndims(arr::SlowNDArray{T, D}) where {T, D}
     D
 end
 function Base.size(arr::SlowNDArray{T, D}) where {T, D}
-    NTuple{D, Int}(pyobj(arr)[:shape]::NTuple{D, Int64})
+    NTuple{D, Int}(pyobj(arr).shape::NTuple{D, Int64})
 end
 function Base.strides(arr::SlowNDArray)
     Base.size_to_strides(1, reverse(size(arr))...)
@@ -461,14 +461,14 @@ function Base.delete!(obj::ASDFType, key::String)
 end
 
 function Base.length(obj::ASDFType)
-    Int(obj.pyobj[:__len__]())
+    Int(obj.pyobj.__len__())
 end
 function Base.keys(obj::ASDFType)
-    iter = obj.pyobj[:keys]()[:__iter__]()
+    iter = obj.pyobj.keys().__iter__()
     keys = String[]
     while true
         try
-            key = iter[:__next__]()
+            key = iter.__next__()
             push!(keys, key)
         catch
             # TODO: Check for Python StopIteration exception
@@ -478,11 +478,11 @@ function Base.keys(obj::ASDFType)
     Set(keys)
 end
 function Base.iterate(obj::ASDFType)
-    Base.iterate(obj, obj.pyobj[:__iter__]())
+    Base.iterate(obj, obj.pyobj.__iter__())
 end
 function Base.iterate(obj::ASDFType, iter)
     try
-        iter[:__next__](), iter
+        iter.__next__(), iter
     catch
         # TODO: Check for Python StopIteration exception
         nothing
