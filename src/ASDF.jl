@@ -335,6 +335,13 @@ struct NDArray{T, D, Repr <: Union{PyArray, PyObject}} <: DenseArray{T, D}
     function NDArray{T, D}(pyobj::PyObject) where {T, D}
         isefficient = T <: PyArrayTypes
         if isefficient
+            # Python 3 requires array-like Python object to support a
+            # "buffer protocol" as defined in PEP 3118. Apparently,
+            # asdf.py's "NDArrayType" does not, and the call to
+            # "PyArray_Info" fails.
+            isefficient = isbuftype(pyobj)
+        end
+        if isefficient
             info = PyArray_Info(pyobj)
             isefficient = info.native  # byteorder is native
         end
