@@ -339,11 +339,11 @@ struct NDArray{T, D, Repr <: Union{PyArray, PyObject}} <: DenseArray{T, D}
             # "buffer protocol" as defined in PEP 3118. Apparently,
             # asdf.py's "NDArrayType" does not, and the call to
             # "PyArray_Info" fails.
-            isefficient = isbuftype(pyobj)
+            isefficient = PyCall.isbuftype(pyobj)
         end
         if isefficient
             info = PyArray_Info(pyobj)
-            isefficient = info.native  # byteorder is native
+            isefficient = info.native # byteorder is native
         end
         if isefficient
             # There is an efficient PyArray implementation
