@@ -11,8 +11,3 @@ if version < v"2.0.3"
     @error "This version is unsupported"
     exit(1)
 end
-
-# Apparently we need jsonschema>=2.3<=2.6, but sometimes jsonschema
-# 3.0.1 will be installed. I assume that someone should fix the
-# "asdf.py" package instead.
-const jsonschema = pyimport_conda("jsonschema", "jsonschema>=2.3<=2.6")
