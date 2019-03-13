@@ -27,11 +27,11 @@ install:
   - ps: iex ((new-object net.webclient).DownloadString("https://raw.githubusercontent.com/JuliaCI/Appveyor.jl/version-1/bin/install.ps1"))
 
 build_script:
-  - echo "%JL_BUILD_SCRIPT%"
   # Apparently the asdf.py package needs jsonschema>=2.3<=2.6, but
   # sometimes jsonschema 3.0.1 will be installed. I assume that
   # someone should fix the "asdf.py" package instead...
-  - C:\julia\bin\julia -e "using Pkg; Pkg.add(\"Conda\"); using Conda; Conda.list(); Conda.add(\"jsonschema>=2.3,<=2.6\"); Conda.list()"
+  - C:\julia\bin\julia -e "using Pkg; Pkg.add(""Conda""); using Conda; Conda.list(); Conda.add(""jsonschema>=2.3,<=2.6""); Conda.list()"
+  - echo "%JL_BUILD_SCRIPT%"
   - C:\julia\bin\julia -e "%JL_BUILD_SCRIPT%"
 
 test_script:
