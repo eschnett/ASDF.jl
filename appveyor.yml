@@ -31,7 +31,7 @@ build_script:
   # sometimes jsonschema 3.0.1 will be installed. I assume that
   # someone should fix the "asdf.py" package instead...
   # TODO: How does one quote quotes here?
-  - C:\julia\bin\julia -e "using Pkg; Pkg.add(String(['C','o','n','d','a'])); using Conda; Conda.list(); Conda.add(String['j','s','o','n','s','c','h','e','m','a','>','=','2','.','3',',','<','=','2','.','6'])); Conda.list()"
+  - C:\julia\bin\julia -e "using Pkg; Pkg.add(String(['C','o','n','d','a'])); using Conda; Conda.list(); Conda.add(String(['j','s','o','n','s','c','h','e','m','a','>','=','2','.','3',',','<','=','2','.','6'])); Conda.list()"
   - echo "%JL_BUILD_SCRIPT%"
   - C:\julia\bin\julia -e "%JL_BUILD_SCRIPT%"
 
