@@ -30,7 +30,7 @@ build_script:
   # Apparently the asdf.py package needs jsonschema>=2.3<=2.6, but
   # sometimes jsonschema 3.0.1 will be installed. I assume that
   # someone should fix the "asdf.py" package instead...
-  - set JL_CONDA_SCRIPT=using Pkg; Pkg.add("Conda"); using Conda; Conda.list(); Conda.add("jsonschema>=2.3,<=2.6"); Conda.list()
+  - $env:JL_CONDA_SCRIPT="using Pkg; Pkg.add(\`"Conda\`"); using Conda; Conda.list(); Conda.add(\`"jsonschema>=2.3,<=2.6\`"); Conda.list()"
   - echo "%JL_CONDA_SCRIPT%"
   - C:\julia\bin\julia -e "%JL_CONDA_SCRIPT%"
   - echo "%JL_BUILD_SCRIPT%"
