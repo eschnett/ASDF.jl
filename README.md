@@ -1,4 +1,4 @@
-# [ASDF](https://github.com/eschnett/ASDF)
+# [ASDF](https://github.com/eschnett/ASDF.jl)
 
 A Julia library for the [Advanced Scientific Data Format (ASDF)](https://asdf-standard.readthedocs.io/en/latest/index.html).
 
